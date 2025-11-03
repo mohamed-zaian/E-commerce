@@ -1,0 +1,46 @@
+{
+  "env": {
+    "es2021": true,
+    "node": true
+  },
+    "parserOptions": {
+    "ecmaVersion": 2022},
+  "extends": [
+    "airbnb-base",
+    "plugin:import/recommended",
+    "plugin:node/recommended",
+    "prettier" 
+  ],
+  "plugins": ["prettier", "import"],
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".json"]
+      }
+    }
+  },
+  "rules": {
+    "prettier/prettier": "off",
+    "spaced-comment": "off",
+    "no-console": "off",
+    "consistent-return": "off",
+    "func-names": "off",
+    "object-shorthand": "off",
+    "no-process-exit": "off",
+    "no-param-reassign": "off",
+    "no-return-await": "off",
+    "no-underscore-dangle": "off",
+    "class-methods-use-this": "off",
+    "no-undef": "error",
+    "prefer-destructuring": ["error", { "object": true, "array": false }],
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "req|res|next|val" }],
+
+    // 👇 Add these two to handle ESM imports cleanly
+    "import/extensions": [
+      "error",
+      "ignorePackages",
+      { "js": "always", "json": "never" }
+    ],
+    "import/no-unresolved": "off"
+  }
+}
