@@ -1,5 +1,4 @@
 import asyncHandler from "express-async-handler";
-import slugify from "slugify";
 import ApiFeature from "../utils/apiFeature.js";
 
 class FactoryHandler {
@@ -10,59 +9,71 @@ class FactoryHandler {
   // 🗑️ deleteOne
   deleteOne = asyncHandler(async (req, res) => {
     const { id } = req.params;
+
     const item = await this.model.findByIdAndDelete(id);
+
     if (!item) {
       return res.status(404).json({
         error: `${this.model.modelName} not found`,
       });
     }
+
+    item.remove();
     res.status(200).json({
       msg: `The ${this.model.modelName} has been deleted successfully.`,
     });
   });
 
   // ✏️ updateOne
-      updateOne = asyncHandler(async (req, res) => {
-        const { id } = req.params;
+  updateOne = asyncHandler(async (req, res) => {
+    const { id } = req.params;
 
-        const item = await this.model.findByIdAndUpdate(
-          id,
-          // eslint-disable-next-line node/no-unsupported-features/es-syntax
-          { slug: slugify(req.body.name), ...req.body },
-          { new: true, runValidators: true }
-        );
+    const item = await this.model.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!item) {
       return res.status(404).json({
         error: `This ${this.model.modelName} with id ${id} was not found`,
       });
     }
+    await item.save();
 
     res.status(200).json({ data: item });
   });
 
   // 🔍 getOne
-  getOne = asyncHandler(async (req, res) => {
-    const { id } = req.params;
+  getOne = (populateOptions) =>
+    asyncHandler(async (req, res) => {
+      const { id } = req.params;
 
-    // ✅ populate لازم يتكتب قبل await
-    let query = this.model.findById(id);
-    if (req.populateOptions) query = query.populate(req.populateOptions);
+      // ✅ populate لازم يتكتب قبل await
 
-    const item = await query;
+      let query;
+      if (populateOptions) {
+        query = this.model.findById(id).populate(populateOptions);
+      } else {
+        query = this.model.findById(id);
+      }
 
-    if (!item) {
-      return res.status(404).json({
-        error: `${this.model.modelName} not found`,
-      });
-    }
+      const item = await query;
 
-    res.status(200).json({ data: item });
-  });
+      if (!item) {
+        return res.status(404).json({
+          error: `${this.model.modelName} not found`,
+        });
+      }
+
+      res.status(200).json({ data: item });
+    });
 
   // 📋 getAll
   getAll = asyncHandler(async (req, res) => {
-    const apiFeature = new ApiFeature(this.model.find(), req.query)
+    const filterObj =
+      req.filter && typeof req.filter === "object" ? req.filter : {};
+
+    const apiFeature = new ApiFeature(this.model.find(filterObj), req.query)
       .search()
       .filtering()
       .sort()
@@ -79,14 +90,9 @@ class FactoryHandler {
 
   // ➕ createOne
   createOne = asyncHandler(async (req, res) => {
-    // slugify name لو موجود
-    if (req.body.name) {
-      req.body.slug = slugify(req.body.name);
-    }
-
     const item = await this.model.create(req.body);
 
-    res.status(201).json({ data: item }); 
+    res.status(201).json({ data: item });
   });
 }
 

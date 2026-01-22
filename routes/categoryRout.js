@@ -5,6 +5,8 @@ import {
   updateCategory,
   deleteCategory,
   CreateCategory,
+  uploadCategoryImage,
+  setImageUrl,
 } from "../services/categoryServices.js";
 import {
   CreateCategoryValidor,
@@ -14,6 +16,8 @@ import {
 } from "../utils/validation/categoryValidtion.js";
 import subCategoryRouter from "./subcategoryRout.js";
 import productRoute from "./productRoute.js";
+import { protect, restrictTo } from "../services/authService.js";
+import { createFilterObj } from "../services/reviewService.js";
 
 const categoryRouter = express.Router();
 categoryRouter.use("/:id/subcategory", subCategoryRouter);
@@ -21,12 +25,18 @@ categoryRouter.use("/:id/product", productRoute);
 
 categoryRouter
   .route("/")
-  .post(CreateCategoryValidor, CreateCategory)
-  .get(getListOfCategories);
+  .post( protect , restrictTo("admin" , "manager") , uploadCategoryImage, setImageUrl, CreateCategoryValidor, CreateCategory)
+  .get(createFilterObj , getListOfCategories);
 categoryRouter
   .route("/:id")
   .get(getCategoryValidator, getCategory)
-  .put(updateCategoryValidator, updateCategory)
-  .delete(deleteCategoryValidator, deleteCategory);
+  .put(
+    protect , restrictTo("admin" , "manager"),
+    uploadCategoryImage,
+
+    updateCategoryValidator,
+    updateCategory
+  )
+  .delete(protect , restrictTo("admin" , "manager"), deleteCategoryValidator, deleteCategory);
 
 export default categoryRouter;

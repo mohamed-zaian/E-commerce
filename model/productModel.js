@@ -65,8 +65,22 @@ const schema = new mongoose.Schema(
       default: 0,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
+
+schema.virtual("reviews", {
+  ref: "Review",
+  foreignField: "product",
+  localField: "_id",
+});
+
+
+
 
 const Product = mongoose.model("Product", schema);
 export default Product;
