@@ -14,7 +14,7 @@ export const createOrder = asyncHandler(async (req, res) => {
   const shippingPrice = 0;
   const { cartId } = req.params;
   const cart = await Cart.findById(cartId);
-  if (cart) {
+  if (!cart) {
     return res.status(404).json({ msg: "ther is no cart" });
   }
   const cartPrice = cart.totalPriceAfterDiscount
@@ -32,7 +32,7 @@ export const createOrder = asyncHandler(async (req, res) => {
 
   if (order) {
     const bulkOption = cart.cartItems.map((item) => ({
-      upddateOne: {
+      updateOne: {
         filter: { _id: item.product },
         update: { $inc: { quantity: -item.quantity, sold: +item.quantity } },
       },
@@ -61,7 +61,7 @@ export const updateOrderToPaid = asyncHandler(async (req, res) => {
   order.isPaid = true;
   order.paidAt = Date.now();
 
-  const updateOrder = await order.sava();
+  const updateOrder = await order.save();
 
   res.status(200).json({ statue: "success", order: updateOrder });
 });
@@ -74,12 +74,10 @@ export const updateOrderToDelivered = asyncHandler(async (req, res) => {
   order.isDelivered = true;
   order.deliveredAt = Date.now();
 
-  const updateOrder = await order.sava();
+  const updateOrder = await order.save();
 
   res.status(200).json({ statue: "success", order: updateOrder });
 });
-
-
 
 export const checkoutSession = asyncHandler(async (req, res) => {
   const taxPrice = 0;
@@ -118,10 +116,8 @@ export const checkoutSession = asyncHandler(async (req, res) => {
     client_reference_id: cartId,
   });
 
- res.status(200).json({
-   status: "success",
-   session , 
- });
+  res.status(200).json({
+    status: "success",
+    session,
+  });
 });
-
- 
