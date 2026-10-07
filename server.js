@@ -10,7 +10,9 @@ dotenv.config({
   path: "./config.env",
 });
 
-console.log(`Environment: ${process.env.NODE_ENV}`)
+console.log("Environment:", process.env.NODE_ENV);
+console.log("DB_URL exists:", !!process.env.DB_URL);
+console.log("DB_URL type:", typeof process.env.DB_URL);
 
 const app = express();
 
