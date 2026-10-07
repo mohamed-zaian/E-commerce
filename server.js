@@ -3,13 +3,14 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import qs from "qs";
 import hpp from "hpp";
-import cors from "cors";
-import mongoose from "mongoose";
+
 import dbConnection from "./config/db.js";
 
 dotenv.config({
   path: "./config.env",
 });
+
+console.log(`Environment: ${process.env.NODE_ENV}`)
 
 const app = express();
 
@@ -63,27 +64,7 @@ const startServer = async () => {
 
     // Test Product API
 
-    app.get("/test-products", async (req, res) => {
-      try {
-        const products = await Product.find()
-          .populate("category")
-          .populate("brand");
-
-        res.status(200).json({
-          success: true,
-
-          result: products.length,
-
-          data: products,
-        });
-      } catch (error) {
-        res.status(500).json({
-          success: false,
-
-          error: error.message,
-        });
-      }
-    });
+  
 
     // =======================
     // 404 Handler
