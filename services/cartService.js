@@ -147,7 +147,6 @@ export const removeProductFromCart = asyncHandler(async (req, res) => {
       item.size.toUpperCase() === size.toUpperCase(),
   );
 
-  console.log("REMOVE ITEM:", item);
 
   if (!item) {
     return res.status(404).json({
@@ -195,7 +194,6 @@ const item = cart.cartItems.find(
 
 
 
-  console.log("FOUND ITEM:", item);
 
   if (!item) {
     return res.status(404).json({
@@ -314,7 +312,6 @@ export const getCartItem = asyncHandler(async (req, res) => {
 
   const item = cart.cartItems.id(itemId);
 
-  console.log("GET CART ITEM:", item);
   if (!item) {
     return res.status(404).json({
       msg: "Item not found",

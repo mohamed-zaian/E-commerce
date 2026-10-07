@@ -94,7 +94,6 @@ export const updateUserValidator = [
     .isEmail()
     .withMessage("the email not valid")
     .custom(async (value) => {
-      console.log(req.user._id);
       const existedUser = await User.findOne({
         email: value,
       });

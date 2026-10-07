@@ -335,15 +335,6 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     }
   }
 
-  console.log("========== UPDATE PRODUCT ==========");
-
-  console.log("ID:", id);
-
-  console.log("BODY:", req.body);
-
-  console.log("IMAGE COVER:", req.body.imageCover);
-
-  console.log("IMAGES:", req.body.images);
 
   // =====================================================
   // UPDATE
@@ -358,11 +349,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     return next(new ApiError(`No product found for this id ${id}`, 404));
   }
 
-  console.log("UPDATED IMAGE COVER:", updatedProduct.imageCover);
 
-  console.log("UPDATED IMAGES:", updatedProduct.images);
-
-  console.log("====================================");
 
   res.status(200).json({
     success: true,

@@ -84,8 +84,7 @@ export const deleteReview = asyncHandler(async (req, res) => {
     product: review.product,
   });
 
-  console.log("Remaining reviews:", reviews);
-  console.log("Product ID:", review.product);
+
 
   const ratingQuantity = reviews.length;
 
@@ -94,10 +93,7 @@ export const deleteReview = asyncHandler(async (req, res) => {
       ? 0
       : reviews.reduce((sum, item) => sum + item.rating, 0) / ratingQuantity;
 
-  console.log({
-    ratingQuantity,
-    ratingsAverage,
-  });
+  
 
   await Product.findByIdAndUpdate(review.product, {
     ratingsAverage,

@@ -10,7 +10,7 @@ export const createAdminUser = async () => {
     const existingAdmin = await User.findOne({ role: "admin" });
 
     if (existingAdmin) {
-      console.log("Admin user already exists:", existingAdmin.email);
+    
       return existingAdmin;
     }
 
@@ -21,14 +21,11 @@ export const createAdminUser = async () => {
       role: "admin",
     });
 
-    console.log("✅ Admin user created successfully:");
-    console.log("   Email:", admin.email);
-    console.log("   Password: admin123");
-    console.log("   Role:", admin.role);
+
 
     return admin;
   } catch (error) {
-    console.error("❌ Error creating admin user:", error.message);
+
     throw error;
   }
 };
@@ -39,7 +36,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     .then(() => createAdminUser())
     .then(() => process.exit(0))
     .catch((error) => {
-      console.error(error);
+  
       process.exit(1);
     });
 }

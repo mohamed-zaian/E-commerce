@@ -18,11 +18,6 @@ const app = express();
 // =======================
 
 // CORS Configuration
-app.use(cors({
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
 
 app.use(
   express.json({
@@ -53,10 +48,6 @@ const startServer = async () => {
     // Connect database first
 
     await dbConnection();
-
-    console.log("Mongo state:", mongoose.connection.readyState);
-
-    console.log("Database:", mongoose.connection.name);
 
     // Import models/routes after connection
 
@@ -99,8 +90,6 @@ const startServer = async () => {
     // =======================
 
     app.use((req, res, next) => {
-
-      console.log(`404 Not found: ${req.originalUrl}`)
       const err = new Error(`Not found: ${req.originalUrl}`);
 
       err.status = 404;
@@ -122,11 +111,8 @@ const startServer = async () => {
 
     const port = process.env.PORT || 8000;
 
-    app.listen(port, () => {
-      console.log(`🚀 Server running on port ${port}`);
-    });
+    app.listen(port, () => {});
   } catch (error) {
-    console.error("❌ Failed to start server:", error.message);
     process.exit(1);
   }
 };

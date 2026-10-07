@@ -11,21 +11,13 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendEmail = async (option) => {
-     
-
-    const mailOptions = {
-        from: `E-Shop <${process.env.USERNAME_EMAIL}>`,
-        to : option.email,
-        subject: option.subject,
-        text: option.text,
-    }
-     transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.log("NODEMAILER ERROR:", error);
-      } else {
-        console.log("EMAIL SENT:", info.response);
-      }
-    });
-}
+  const mailOptions = {
+    from: `E-Shop <${process.env.USERNAME_EMAIL}>`,
+    to: option.email,
+    subject: option.subject,
+    text: option.text,
+  };
+  transporter.sendMail(mailOptions);
+};
 
 export default sendEmail;

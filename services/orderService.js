@@ -58,11 +58,9 @@ export const createOrder = asyncHandler(async (req, res) => {
     if (item.size === "ONE SIZE") {
       item.size = "One Size";
     }
-    console.log(item.quantity)
 
     const size = product.sizes.find((size) => size.size === item.size);
 
-    console.log(size.quantity)
     if (!size || size.quantity < item.quantity) {
       return res.status(400).json({
         message: `Not enough stock for ${product.name}`,
@@ -321,7 +319,6 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 });
 export const getAllOrders = asyncHandler(async (req, res) => {
   const { keyword, status, page = 1, limit = 10 } = req.query;
-  console.log(req.user._id);
   let filter = req.filter || {};
 
   // status filter

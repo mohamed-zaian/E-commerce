@@ -9,10 +9,8 @@ class FactoryHandler {
   // 🗑️ deleteOne
   deleteOne = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    console.log(id)
 
     const item = await this.model.findByIdAndDelete(id);
-console.log(item)
     if (!item) {
       return res.status(404).json({
         error: `${this.model.modelName} not found`,
@@ -58,7 +56,6 @@ console.log(item)
       }
 
       const item = await query;
-      console.log("item", item);
 
       if (!item) {
         return res.status(404).json({

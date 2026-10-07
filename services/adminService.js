@@ -567,7 +567,6 @@ export const getAllOrdersForAdmin = asyncHandler(async (req, res) => {
     filter.paymentMethodType = paymentMethodType;
   }
 
-  console.log("ADMIN ORDER FILTER:", filter);
 
   const [orders, total] = await Promise.all([
     Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),

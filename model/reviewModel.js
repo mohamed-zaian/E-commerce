@@ -34,7 +34,7 @@
     ]);
 
     if (result.length > 0) {
-      console.log(result)
+  
       await Product.findByIdAndUpdate(productID, {
         ratingsAverage: result[0].averageRating,
         ratingQuantity: result[0].ratingQuantiy,
