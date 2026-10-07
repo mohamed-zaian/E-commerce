@@ -14,11 +14,7 @@ const schema = new mongoose.Schema(
       type: String,
       lowercase: true,
     },
-         category: {
-      type: mongoose.Schema.ObjectId,
-      ref: 'Category',
-      required: [true, 'SubCategory must be belong to parent category'],
-    },
+
   },
 
   { timestamps: true }

@@ -8,7 +8,6 @@ cloudinary.config({
   api_secret: process.env.YOUR_API_SECRET,
 });
 
-console.log(process.env.YOUR_CLOUD_NAME);
 
 
 

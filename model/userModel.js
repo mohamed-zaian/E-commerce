@@ -1,11 +1,19 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+
   
 const schema = new mongoose.Schema(
   {
-    name: {
+    firstName: {
       type: String,
-      required: [true, "the name is required"],
+      required: [true, "the first name is required"],
+      trim: true,
+    },
+
+    lastName: {
+      type: String,
+      required: [true, "the last name is required"],
+      trim: true,
     },
     email: {
       type: String,
@@ -25,9 +33,7 @@ const schema = new mongoose.Schema(
     passwordResetExpires: Date,
     passwordResetVerified: Boolean,
 
-    imageProfile: {
-      type: String,
-    },
+  
     role: {
       type: String,
       enum: ["user", "admin"],
@@ -37,7 +43,13 @@ const schema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Product",
-      }
+      },
+    ],
+    
+    orders: [
+
+      {type: mongoose.Schema.Types.ObjectId,
+      ref:"Order"}
     ],
     addresses: [
       {
@@ -46,11 +58,10 @@ const schema = new mongoose.Schema(
         details: String,
         phone: String,
         city: String,
-        postalCode: String,
-      }
-    ]
+      },
+    ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 
@@ -66,5 +77,6 @@ schema.pre("save", async function (next) {
 
 
 const User = mongoose.model("User", schema);
+
 
 export default User;

@@ -1,45 +1,91 @@
 import express from "express";
+
 import {
   getlistProducts,
   getProduct,
   updateProduct,
   deleteProduct,
   createProduct,
-  setCategoryID,
   uploadproductImage,
   setImagetoBody,
-
+  getFeaturedProducts,
+  getNewArrivals,
+  getOnSaleProducts,
+  getBestSellers,
+  getTrendingProducts,
+  getRelatedProducts,
+  parseProductFields
 } from "../services/productServices.js";
+
 import {
   cretaProductValidator,
   deleteProductValidator,
   getProductValidator,
   updateProductValidator,
 } from "../utils/validation/productValidation.js";
+
 import { protect, restrictTo } from "../services/authService.js";
+
 import reviewRoute from "./reviewRoute.js";
-import { createFilterObj } from "../services/reviewService.js";
+
+const productRoute = express.Router({
+  mergeParams: true,
+});
+
+// Special routes FIRST
+
+productRoute.get("/special/featured", getFeaturedProducts);
+
+productRoute.get("/special/new-arrivals", getNewArrivals);
+
+productRoute.get("/special/on-sale", getOnSaleProducts);
+
+productRoute.get("/special/bestsellers", getBestSellers);
+
+productRoute.get("/special/trending", getTrendingProducts);
+
+productRoute.get("/special/related/:id", getRelatedProducts);
 
 
-const productRoute = express.Router({mergeParams : true});
+// Reviews
+productRoute.use("/:id/reviews", reviewRoute);
+// Main CRUD
 
-productRoute.use("/:id/review" , reviewRoute)
 productRoute
   .route("/")
+
   .post(
     protect,
-    restrictTo("admin", "manager"),
+    restrictTo("admin"),
     uploadproductImage,
     setImagetoBody,
-    setCategoryID,
+    parseProductFields,
     cretaProductValidator,
-    createProduct
+    createProduct,
   )
-  .get(createFilterObj, getlistProducts);
+
+  .get(getlistProducts);
+
 productRoute
   .route("/:id")
+
   .get(getProductValidator, getProduct)
-  .put(protect , restrictTo("admin" , "manager"), uploadproductImage, updateProductValidator, updateProduct)
-  .delete(protect , restrictTo("admin" , "manager"), deleteProductValidator, deleteProduct);
+
+  .put(
+    protect,
+    restrictTo("admin"),
+    uploadproductImage,
+    setImagetoBody,
+    parseProductFields,
+    updateProductValidator,
+    updateProduct,
+  )
+
+  .delete(
+    protect,
+    restrictTo("admin"),
+    deleteProductValidator,
+    deleteProduct,
+  );
 
 export default productRoute;

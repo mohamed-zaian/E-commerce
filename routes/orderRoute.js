@@ -1,19 +1,29 @@
 import express from "express";
-import { checkoutSession } from "../services/orderService.js";
 
-import { protect, restrictTo } from "../services/authService.js";
-import { getAllReviews } from "../services/reviewService.js";
+import {
+  filterByLoggerUser,
+  getAllOrders,
+  getSpacificOrder,
+  createOrder,
+  updateOrderStatus,
+} from "../services/orderService.js";
+
+import { protect} from "../services/authService.js";
 
 const orderRouter = express.Router();
 
-orderRouter.get(
-  "/checkout/:cartId",
-  protect,
-  restrictTo("user"),
-  checkoutSession,
-);
+orderRouter.use(protect, filterByLoggerUser);
+
+// Create order from cart
+orderRouter.post("/create/:cartId", createOrder);
 
 
-orderRouter.route("/").get(getAllReviews)
 
-export default orderRouter
+// Get all user orders
+orderRouter.get("/", getAllOrders);
+
+// Get one order
+orderRouter.get("/:id", getSpacificOrder);
+orderRouter.patch("/:id/status", updateOrderStatus);
+
+export default orderRouter;

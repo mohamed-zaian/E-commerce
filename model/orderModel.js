@@ -2,32 +2,58 @@ import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema(
   {
+    orderNumber: {
+      type: String,
+      unique: true,
+    },
     user: {
       type: mongoose.Schema.ObjectId,
-      ref: 'User',
-      required: [true, 'Order must be belong to user'],
+      ref: "User",
+      required: [true, "Order must be belong to user"],
+    },
+    customerName: {
+      type: String,
+    },
+    customerEmail: {
+      type: String,
     },
     cartItems: [
       {
         product: {
           type: mongoose.Schema.ObjectId,
-          ref: 'Product',
+          ref: "Product",
         },
-        quantity: Number,
+        name: String,
+        size: String,
         color: String,
+        quantity: Number,
         price: Number,
+        image: String,
       },
     ],
 
+    subtotal: {
+      type: Number,
+      default: 0,
+    },
+    discount: {
+      type: Number,
+      default: 0,
+    },
     taxPrice: {
       type: Number,
       default: 0,
     },
     shippingAddress: {
-      details: String,
-      phone: String,
+      firstName: String,
+      lastName: String,
+      address: String,
+      apartment: String,
       city: String,
-      postalCode: String,
+      state: String,
+      zipCode: String,
+      country: String,
+      phone: String,
     },
     shippingPrice: {
       type: Number,
@@ -36,10 +62,20 @@ const orderSchema = new mongoose.Schema(
     totalOrderPrice: {
       type: Number,
     },
+    status: {
+      type: String,
+      enum: ["pending", "shipped", "delivered", "cancelled"],
+      default: "pending",
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "refunded"],
+      default: "pending",
+    },
     paymentMethodType: {
       type: String,
-      enum: ['card', 'cash'],
-      default: 'cash',
+      enum: ["الدفع عند الاستلام", "إنستاباي"],
+      default: "Cash on Delivery",
     },
     isPaid: {
       type: Boolean,
@@ -51,21 +87,22 @@ const orderSchema = new mongoose.Schema(
       default: false,
     },
     deliveredAt: Date,
+    estimatedDelivery: Date,
+    trackingNumber: String,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-orderSchema.pre(/^find/, function (next) {
-  this.populate({
-    path: 'user',
-    select: 'name imageProfile email phone',
-  }).populate({
-    path: 'cartItems.product',
-    select: 'name imageCover ',
-  });
-
+// Generate order number before saving
+orderSchema.pre('save', async function(next) {
+  if (!this.orderNumber) {
+    const count = await this.constructor.countDocuments();
+    this.orderNumber = `ORD-2024-${String(count + 1).padStart(3, '0')}`;
+  }
   next();
 });
 
+;
+
 const Order = mongoose.model('Order', orderSchema);
- export default Order ; 
+export default Order;

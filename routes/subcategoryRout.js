@@ -20,9 +20,16 @@ const subCategoryRouter = express.Router({ mergeParams: true });
 
 subCategoryRouter
   .route("/")
-  .post(protect , restrictTo("admin" , "manager")  ,setID, createSubCategoryValidator, CreateSubCategory)
-  .get(createFilterObj ,getListOfSubCategories);
+  .post(
+    protect,
+    restrictTo("admin", "manager"),
+    setID,
+    createSubCategoryValidator,
+    CreateSubCategory,
+  )
+  .get(createFilterObj, getListOfSubCategories);
 
+subCategoryRouter.route("/category/:categoryId").get(getListOfSubCategories);
 subCategoryRouter
   .route("/:id")
   .put(protect , restrictTo("admin" , "manager"), updateSubSubCategoryValidator, updateSubCategory)
@@ -30,3 +37,4 @@ subCategoryRouter
   .delete(protect , restrictTo("admin" , "manager"), deleteSubCategoryValidator, deleteSubCategory);
 
 export default subCategoryRouter;
+    

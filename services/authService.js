@@ -13,11 +13,12 @@ export const setToken = (id) => {
 };
 
 export const signUP = asyncHandler(async (req, res) => {
-  const user = await User.create({
-    name: req.body.name,
-    email: req.body.email,
-    password: req.body.password,
-  });
+const user = await User.create({
+  firstName: req.body.firstName,
+  lastName: req.body.lastName,
+  email: req.body.email,
+  password: req.body.password,
+});
 
   const token = setToken(user._id);
 
@@ -32,7 +33,7 @@ export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
   if (!user) {
-    return res.status(404).json({ msg: "inavlid email or password" });
+    return res.status(404).json({ msg: "invalid email or password" });
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
@@ -44,13 +45,13 @@ export const login = asyncHandler(async (req, res) => {
   const token = setToken(user._id);
 
   res.status(200).json({
-    message: "User registered successfully",
+    message: "User logged in successfully",
     data: user,
     token,
   });
 });
 
-export const protect = asyncHandler(async (req, res, next) => {
+export const protect = asyncHandler(async (req, _res, next) => {
   let token;
   if (
     req.headers.authorization &&
@@ -67,12 +68,9 @@ export const protect = asyncHandler(async (req, res, next) => {
 
   const decode = jwt.verify(token, process.env.JWT_SECRET);
 
-  const { id } = decode;
-
   //  check if user exist
 
-  const currentUser = await User.findById(id);
-  console.log(currentUser);
+  const currentUser = await User.findById(decode.id);
   if (!currentUser) {
     return next(new Error("you user is not found ", 404));
   }
@@ -95,7 +93,7 @@ export const protect = asyncHandler(async (req, res, next) => {
 });
 
 export const restrictTo = (...roles) =>
-  asyncHandler(async (req, res, next) => {
+  asyncHandler(async (req, _res, next) => {
     if (!roles.includes(req.user.role)) {
       next(new Error("you are not authorized to perform this action", 403));
     }
@@ -166,5 +164,13 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({
     message: "Password has been reset successfully",
+  });
+});
+
+export const logout = asyncHandler(async (_req, res) => {
+  // For JWT, we don't need to do anything server-side
+  // The client will simply remove the token from localStorage
+  res.status(200).json({
+    message: "Logged out successfully",
   });
 });

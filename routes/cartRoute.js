@@ -8,16 +8,18 @@ import {
   getCart,
   removeProductFromCart,
   updateProductQuantityInCart,
+  getCartItem,
 } from "../services/cartService.js";
 
 const router = express.Router();
-router.use(protect, restrictTo("user"));
+router.use(protect, restrictTo("user" , "admin"));
 
 router.route("/applyCoupon").put(applyCoupon);
 
 router.route("/").get(getCart).delete(clearCart).post(addProductToCart);
 router
   .route("/:productId")
+  .get(getCartItem)
   .delete(removeProductFromCart)
   .put(updateProductQuantityInCart);
 

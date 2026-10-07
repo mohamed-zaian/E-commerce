@@ -8,8 +8,7 @@ import {
   setUserID,
   createFilterObj,
 } from "../services/reviewService.js";
-import { protect, restrictTo } from "../services/authService.js";
-import { createReviewValidator, deleteReviewValidator, updateReviewValidator } from "../utils/validation/reviewValidation.js";
+import { protect, restrictTo  , } from "../services/authService.js";
 
 
 const reviewRoute = express.Router({mergeParams : true});
@@ -17,13 +16,12 @@ reviewRoute.use(protect, restrictTo("user", "admin", "manager"));
 
 reviewRoute
   .route("/")
-  .get(createFilterObj , getAllReviews)
-  .post(setUserID, createReviewValidator, createReview);
+  .get(createFilterObj, getAllReviews)
+  .post(setUserID, createFilterObj, createReview);
 
 reviewRoute
-  .route("/:id")
+  .route("/:reviewId")
   .get(getReview)
-  .put(updateReviewValidator, updateReview)
-  .delete(deleteReviewValidator, deleteReview);
-
+  .put(updateReview)
+  .delete(deleteReview);
 export default reviewRoute;

@@ -34,8 +34,8 @@ export const removeFromWishList = asyncHandler(async (req, res) => {
 
 export const getWishList = asyncHandler(async (req, res) => 
 {
-
+console.log(req.user._id)
   const user = await User.findById(req.user._id).populate("wishlist");
-  res.status(200).json({ wishlist: user.wishlist });
+  res.status(200).json({total : user.wishlist.length ,  data: user.wishlist   });
 
 })  

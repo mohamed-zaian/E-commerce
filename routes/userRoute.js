@@ -27,19 +27,28 @@ const userRouter = express.Router();
 userRouter.use(protect);
 
 userRouter.get("/me", getLoggedUserData, getUser);
-userRouter.put("/changeMyPassword", changeMyPasswordValidator, changeMyPassword);
+userRouter.put(
+  "/changeMyPassword",
+  changeMyPasswordValidator,
+  changeMyPassword,
+);
+
+
+
 
 userRouter.put(
   "/updateLoggedUser",
+  
+
   updateLoggedUserValidator,
-  updateLoggedUserData
+  updateLoggedUserData,
 );
 
-userRouter.use(restrictTo("admin" ,"manager"));
+userRouter.use(restrictTo("admin", "manager"));
 
 userRouter
   .route("/")
-  .get( createFilterObj, getAllUser)
+  .get(createFilterObj, getAllUser)
   .post(uploadImage, setImagetoBody, createUserVaildator, createUser);
 
 userRouter

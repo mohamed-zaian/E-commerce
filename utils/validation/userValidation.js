@@ -21,10 +21,10 @@ export const createUserVaildator = [
     .notEmpty()
     .withMessage("passsword is required")
     .matches(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/,
     )
     .withMessage(
-      "Password must be at least 8 characters, include uppercase, lowercase, number, and special character"
+      "Password must be at least 8 characters, include uppercase, lowercase, number, and special character",
     )
     .custom((value, { req }) => {
       if (value !== req.body.confirmPassword) {
@@ -44,7 +44,6 @@ export const createUserVaildator = [
 ];
 
 export const changePasswordValidator = [
-  check("id").isMongoId().withMessage("this id is not valid"),
   check("confirmPassword")
     .notEmpty()
     .withMessage("you must enter confirm password"),
@@ -53,10 +52,10 @@ export const changePasswordValidator = [
     .withMessage("you must enter current password"),
   check("password")
     .matches(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/,
     )
     .withMessage(
-      "Password must be at least 8 characters, include uppercase, lowercase, number, and special character"
+      "Password must be at least 8 characters, include uppercase, lowercase, number, and special character",
     )
     .notEmpty()
     .withMessage("you must enter password")
@@ -67,7 +66,7 @@ export const changePasswordValidator = [
       }
       const isMatch = await bcrypt.compare(
         req.body.currentPassword,
-        user.password
+        user.password,
       );
       if (!isMatch) {
         throw new Error("the current password is incorrect");
@@ -86,7 +85,6 @@ export const deleteUserValidator = [
 ];
 
 export const updateUserValidator = [
-  check("id").isMongoId().withMessage("this id format is not valid"),
   check("phone")
     .optional()
     .isMobilePhone("ar-EG")
@@ -96,10 +94,15 @@ export const updateUserValidator = [
     .isEmail()
     .withMessage("the email not valid")
     .custom(async (value) => {
-      const existedUser = await User.findOne({ email: value });
+      console.log(req.user._id);
+      const existedUser = await User.findOne({
+        email: value,
+      });
+
       if (existedUser) {
-        throw new Error("this email existed used");
+        throw new Error("this email already exists");
       }
+
       return true;
     }),
 ];
@@ -116,8 +119,11 @@ export const updateLoggedUserValidator = [
     .optional()
     .isEmail()
     .withMessage("the email not valid")
-    .custom(async (value) => {
-      const existedUser = await User.findOne({ email: value });
+    .custom(async (value, { req }) => {
+      const existedUser = await User.findOne({
+        email: value,
+        _id: { $ne: req.user._id },
+      });
       if (existedUser) {
         throw new Error("this email existed used");
       }
@@ -134,10 +140,10 @@ export const changeMyPasswordValidator = [
     .withMessage("you must enter current password"),
   check("password")
     .matches(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/,
     )
     .withMessage(
-      "Password must be at least 8 characters, include uppercase, lowercase, number, and special character"
+      "Password must be at least 8 characters, include uppercase, lowercase, number, and special character",
     )
     .notEmpty()
     .withMessage("you must enter password")
@@ -148,7 +154,7 @@ export const changeMyPasswordValidator = [
       }
       const isMatch = await bcrypt.compare(
         req.body.currentPassword,
-        user.password
+        user.password,
       );
       if (!isMatch) {
         throw new Error("the current password is incorrect");

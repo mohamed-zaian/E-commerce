@@ -1,114 +1,266 @@
 import { check } from "express-validator";
 import ValidationMiddleware from "../../middleware/validationMiddleware.js";
 import Category from "../../model/categoryModel.js";
-import subCategoryModel from "../../model/subcCategoryModel.js";
+import SubCategory from "../../model/subcCategoryModel.js";
+
+// ==========================================
+// CREATE PRODUCT
+// ==========================================
 
 export const cretaProductValidator = [
+  // ==========================
+  // Name
+  // ==========================
+
   check("name")
     .notEmpty()
-    .withMessage("the name is required")
+    .withMessage("The product name is required")
     .isLength({ min: 2 })
-    .withMessage("the name is too small"),
+    .withMessage("The product name is too short"),
+
+  // ==========================
+  // Description
+  // ==========================
+
   check("description")
     .notEmpty()
-    .withMessage("the description is required")
+    .withMessage("The description is required")
     .isLength({ max: 1000 })
-    .withMessage("Too long description"),
-  check("quantity")
-    .notEmpty()
-    .withMessage("the price is required")
-    .isNumeric()
-    .withMessage("the product quantity shoud be number"),
-  check("sold").optional().isNumeric().withMessage("sold shoud be number"),
+    .withMessage("Description is too long"),
+
+  // ==========================
+  // Price
+  // ==========================
+
   check("price")
     .notEmpty()
-    .withMessage("the price is required")
+    .withMessage("The price is required")
     .isNumeric()
-    .withMessage("the price shoud be number"),
+    .withMessage("The price must be a number"),
+
+  // ==========================
+  // Discount Price
+  // ==========================
+
   check("priceAfterDiscount")
-    .optional()
+    .optional({ checkFalsy: true })
     .isNumeric()
+    .withMessage("priceAfterDiscount must be a number")
     .toFloat()
     .custom((value, { req }) => {
-      if (req.body.price <= value) {
+      const price = Number(req.body.price);
+
+      if (value >= price) {
         throw new Error("priceAfterDiscount must be lower than price");
       }
+
       return true;
     }),
-  check("images")
-    .optional()
-    .isArray()
-    .withMessage("images should be array of string"),
-  check("colors")
-    .optional()
-    .isArray()
-    .withMessage("availableColors should be array of string"),
+
+  // ==========================
+  // Images
+  // ==========================
+
   check("imageCover").notEmpty().withMessage("Product imageCover is required"),
+
+  check("images").optional().isArray().withMessage("Images must be an array"),
+
+  // ==========================
+  // Colors
+  // ==========================
+
+  check("colors").optional().isArray().withMessage("Colors must be an array"),
+
+  // ==========================
+  // Sizes
+  // ==========================
+
+  check("sizes")
+    .notEmpty()
+    .withMessage("Product sizes are required")
+    .isArray()
+    .withMessage("Sizes must be an array"),
+
+  // ==========================
+  // Category
+  // ==========================
+
   check("category")
     .notEmpty()
-    .withMessage("the category is required")
+    .withMessage("The category is required")
     .isMongoId()
-    .custom((category) =>
-      Category.findById(category).then((categoryId) => {
-        if (!categoryId) {
-          return Promise.reject(new Error("this category not found"));
-        }
-        return true;
-      })
-    ),
+    .withMessage("Invalid category ID")
+    .custom(async (category) => {
+      const categoryExists = await Category.findById(category);
 
-  check("subcategories")
+      if (!categoryExists) {
+        throw new Error("This category was not found");
+      }
+
+      return true;
+    }),
+
+  // ==========================
+  // SubCategory
+  // ==========================
+
+  // ==========================
+  // Boolean fields
+  // ==========================
+
+  check("featured")
     .optional()
-    .isArray()
-    .withMessage("Subcategories must be an array of IDs")
-    .custom((value) =>
-      subCategoryModel.find({ _id: { $in: value } }).then((result) => {
-        const checker = result.length !== value.length;
-        console.log(checker);
+    .isBoolean()
+    .withMessage("featured must be true or false"),
 
-        if (checker) {
-          return Promise.reject(new Error("Subcategory is not found"));
-        }
-
-        return true;
-      })
-    )
-    .custom((value, { req }) =>
-      subCategoryModel.find({ category: req.body.category }).then((result) => {
-        const subcategoriesID = result.map((s) => s._id.toString());
-        const checker = value.every((id) => subcategoriesID.includes(id));
-        if (!checker) {
-          return Promise.reject(
-            new Error("the subcategory not blong to this category")
-          );
-        }
-        return true;
-      })
-    ),
-
-  check("brand").optional().isMongoId().withMessage("Invalid ID formate"),
-  check("ratingsAverage")
+  check("isNewArrival")
     .optional()
-    .isNumeric()
-    .withMessage("ratingsAverage must be a number")
-    .isLength({ min: 1 })
-    .withMessage("Rating must be above or equal 1.0")
-    .isLength({ max: 5 })
-    .withMessage("Rating must be below or equal 5.0"),
-  check("ratingsQuantity")
+    .isBoolean()
+    .withMessage("isNewArrival must be true or false"),
+
+  check("onSale")
     .optional()
-    .isNumeric()
-    .withMessage("ratingsQuantity must be a number"),
+    .isBoolean()
+    .withMessage("onSale must be true or false"),
+
+  check("isBestSeller")
+    .optional()
+    .isBoolean()
+    .withMessage("isBestSeller must be true or false"),
+
+  check("isTrending")
+    .optional()
+    .isBoolean()
+    .withMessage("isTrending must be true or false"),
+
+  // ==========================
+  // Materials
+  // ==========================
+
+  check("materials")
+    .optional()
+    .isString()
+    .withMessage("Materials must be a string"),
+
+  // ==========================
+  // Tags
+  // ==========================
+
+  check("tags").optional().isArray().withMessage("Tags must be an array"),
+
+  // ==========================
+  // Validation middleware
+  // ==========================
+
   ValidationMiddleware,
 ];
+
+// ==========================================
+// GET PRODUCT
+// ==========================================
 
 export const getProductValidator = [
-  check("id").isMongoId().withMessage("Invalid ID formate"),
+  check("id").isMongoId().withMessage("Invalid ID format"),
+
   ValidationMiddleware,
 ];
+
+// ==========================================
+// UPDATE PRODUCT
+// ==========================================
+
 export const updateProductValidator = [
-  check("id").isMongoId().withMessage("Invalid ID formate"),
+  check("id").isMongoId().withMessage("Invalid ID format"),
+
+  // Only validate fields that are actually sent
+
+  check("name")
+    .optional()
+    .isLength({ min: 2 })
+    .withMessage("The product name is too short"),
+
+  check("description")
+    .optional()
+    .isLength({ max: 1000 })
+    .withMessage("Description is too long"),
+
+  check("price").optional().isNumeric().withMessage("Price must be a number"),
+
+  check("priceAfterDiscount")
+    .optional({ checkFalsy: true })
+    .isNumeric()
+    .withMessage("priceAfterDiscount must be a number")
+    .toFloat()
+    .custom((value, { req }) => {
+      if (req.body.price !== undefined && value >= Number(req.body.price)) {
+        throw new Error("priceAfterDiscount must be lower than price");
+      }
+
+      return true;
+    }),
+
+  check("images").optional().isArray().withMessage("Images must be an array"),
+
+  check("colors").optional().isArray().withMessage("Colors must be an array"),
+
+  check("sizes").optional().isArray().withMessage("Sizes must be an array"),
+
+  check("category")
+    .optional()
+    .isMongoId()
+    .withMessage("Invalid category ID")
+    .custom(async (category) => {
+      const categoryExists = await Category.findById(category);
+
+      if (!categoryExists) {
+        throw new Error("This category was not found");
+      }
+
+      return true;
+    }),
+
+  check("featured")
+    .optional()
+    .isBoolean()
+    .withMessage("featured must be true or false"),
+
+  check("isNewArrival")
+    .optional()
+    .isBoolean()
+    .withMessage("isNewArrival must be true or false"),
+
+  check("onSale")
+    .optional()
+    .isBoolean()
+    .withMessage("onSale must be true or false"),
+
+  check("isBestSeller")
+    .optional()
+    .isBoolean()
+    .withMessage("isBestSeller must be true or false"),
+
+  check("isTrending")
+    .optional()
+    .isBoolean()
+    .withMessage("isTrending must be true or false"),
+
+  check("materials")
+    .optional()
+    .isString()
+    .withMessage("Materials must be a string"),
+
+  check("tags").optional().isArray().withMessage("Tags must be an array"),
+
+  // IMPORTANT
+  ValidationMiddleware,
 ];
+
+// ==========================================
+// DELETE PRODUCT
+// ==========================================
+
 export const deleteProductValidator = [
-  check("id").isMongoId().withMessage("Invalid ID formate"),
+  check("id").isMongoId().withMessage("Invalid ID format"),
+
+  ValidationMiddleware,
 ];

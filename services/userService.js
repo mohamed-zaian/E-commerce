@@ -35,7 +35,7 @@ export const updateUser = asyncHandler(async (req, res) => {
       role: req.body.role,
       imageProfile: req.body.imageProfile,
     },
-    { new: true, runValidators: true }
+    { new: true, runValidators: true },
   );
 
   if (!item) {
@@ -48,15 +48,13 @@ export const updateUser = asyncHandler(async (req, res) => {
 });
 
 export const changePassword = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
   const item = await User.findByIdAndUpdate(
-    id,
+    req.use._id,
     {
       password: await bcrypt.hash(req.body.password, 10),
       changePasswordAt: Date.now(),
     },
-    { new: true, runValidators: true }
+    { new: true, runValidators: true },
   );
 
   if (!item) {
@@ -72,7 +70,6 @@ export const deleteUSer = factory.deleteOne;
 
 export const getLoggedUserData = asyncHandler(async (req, res, next) => {
   req.params.id = req.user._id;
-  console.log(req.params.id);
   next();
 });
 
@@ -81,11 +78,12 @@ export const updateLoggedUserData = asyncHandler(async (req, res, next) => {
     req.user._id,
     // eslint-disable-next-line node/no-unsupported-features/es-syntax
     {
-      name: req.body.name,
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
       email: req.body.email,
       phone: req.body.phone,
     },
-    { new: true, runValidators: true }
+    { new: true, runValidators: true },
   );
 
   const token = setToken(item._id);
@@ -93,20 +91,16 @@ export const updateLoggedUserData = asyncHandler(async (req, res, next) => {
 });
 
 export const changeMyPassword = asyncHandler(async (req, res, next) => {
-
   const item = await User.findByIdAndUpdate(
-   req.user._id,
-     {
-       password: await bcrypt.hash(req.body.password, 10),
-       changePasswordAt: Date.now(),
-     },
-     { new: true, runValidators: true }
-   );
-
+    req.user._id,
+    {
+      password: await bcrypt.hash(req.body.password, 10),
+      changePasswordAt: Date.now(),
+    },
+    { new: true, runValidators: true },
+  );
 
   const token = setToken(item._id);
-   
 
-  res.status(200).json({ data: item  , token}); 
-  
+  res.status(200).json({ data: item, token });
 });

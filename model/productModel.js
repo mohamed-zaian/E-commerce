@@ -1,65 +1,136 @@
 import mongoose from "mongoose";
 
-const schema = new mongoose.Schema(
+const sizeSchema = new mongoose.Schema(
+  {
+    size: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    quantity: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
+
+const productSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "product title is requried"],
+      required: [true, "Product name is required"],
       trim: true,
-      minlength: [2, "To short product name"],
+      minlength: [2, "Product name too short"],
     },
+
     slug: {
       type: String,
+      lowercase: true,
     },
+
     description: {
       type: String,
-      required: [true, "description is required"],
-      max: [200000, "To short product description"],
+      required: [true, "Description is required"],
+      maxlength: [200000, "Description too long"],
     },
-    quantity: {
+
+    materials: {
+      type: String,
+      default: "Premium materials",
+    },
+
+    // Pricing
+
+    price: {
       type: Number,
-      required: [true, "product quantity is required"],
+      required: [true, "Product price is required"],
+      min: 0,
+      max: 20000,
     },
+
+    priceAfterDiscount: {
+      type: Number,
+      default: null,
+    },
+
+    // Inventory
+
     sold: {
       type: Number,
       default: 0,
     },
-    price: {
-      type: Number,
-      required: [true, "product price is required"],
-      trim: true,
-      max: [20000, "Too long product price"],
-    },
-    priceAfterDiscount: {
-      type: Number,
-    },
+
     colors: [String],
+
+    sizes: [sizeSchema],
+
+    // Images
+
     imageCover: {
       type: String,
       required: [true, "Image cover is required"],
     },
+
     images: [String],
+
+    // Relations
 
     category: {
       type: mongoose.Schema.ObjectId,
       ref: "Category",
-      required: [true, "product must be belong to parent category"],
+      required: [true, "Product must belong to category"],
     },
-    brand: {
+
+    subCategory: {
       type: mongoose.Schema.ObjectId,
-      ref: "Brand",
+      ref: "subCategory",
     },
-    subcategories: [
-      {
-        type: mongoose.Schema.ObjectId,
-        ref: "subCategory",
-      },
-    ],
+
+    // Ecommerce flags
+
+    featured: {
+      type: Boolean,
+      default: false,
+    },
+
+    isNewArrival: {
+      type: Boolean,
+      default: false,
+    },
+
+    onSale: {
+      type: Boolean,
+      default: false,
+    },
+
+    isBestSeller: {
+      type: Boolean,
+      default: false,
+    },
+
+    isTrending: {
+      type: Boolean,
+      default: false,
+    },
+
+    tags: [String],
+
+    // Reviews
+
     ratingsAverage: {
       type: Number,
-      min: [1, "Rating Must be above or equal 1.0"],
-      max: [5, "Rating Must be below or equl 5.0"],
+      min: [0, "Rating must be >= 1"],
+      max: [5, "Rating must be <= 5"],
+      default: 0,
     },
+
     ratingQuantity: {
       type: Number,
       default: 0,
@@ -68,19 +139,35 @@ const schema = new mongoose.Schema(
   {
     timestamps: true,
 
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-  }
+    toJSON: {
+      virtuals: true,
+    },
+
+    toObject: {
+      virtuals: true,
+    },
+  },
 );
 
-schema.virtual("reviews", {
+// Virtual reviews
+
+productSchema.virtual("reviews", {
   ref: "Review",
   foreignField: "product",
   localField: "_id",
 });
 
+productSchema.path("sizes").validate(function (sizes) {
+  const values = sizes.map((item) => item.size);
 
+  return values.length === new Set(values).size;
+}, "Duplicate sizes are not allowed");
 
+productSchema.virtual("totalStock").get(function () {
+  return this.sizes.reduce((total, item) => total + item.quantity, 0);
+});
 
-const Product = mongoose.model("Product", schema);
+const Product =
+  mongoose.models.Product || mongoose.model("Product", productSchema);
+  
 export default Product;

@@ -3,7 +3,12 @@ import User from "../../model/userModel.js";
 import ValidationMiddleware from "../../middleware/validationMiddleware.js";
 
 export const signUpValidator = [
-  check("name").notEmpty().withMessage("the name is required"),
+  check("firstName")
+    .notEmpty()
+    .withMessage("the first name is required"),
+  check("lastName")
+    .notEmpty()
+    .withMessage("the last name is required"),
   check("email")
     .notEmpty()
     .withMessage("email is required")

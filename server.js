@@ -1,37 +1,136 @@
 import express from "express";
 import morgan from "morgan";
 import dotenv from "dotenv";
-// eslint-disable-next-line import/no-extraneous-dependencies
 import qs from "qs";
 import hpp from "hpp";
+import cors from "cors";
+import mongoose from "mongoose";
 import dbConnection from "./config/db.js";
-import mountRoute from "./routes/mountRouter.js";
 
-dotenv.config({ path: "./config.env" });
+dotenv.config({
+  path: "./config.env",
+});
 
-dbConnection();
 const app = express();
 
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true }));
+// =======================
+// Middlewares
+// =======================
+
+// CORS Configuration
+app.use(cors({
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+app.use(
+  express.json({
+    limit: "10kb",
+  }),
+);
+
+app.use(
+  express.urlencoded({
+    extended: true,
+  }),
+);
 
 app.set("query parser", (str) => qs.parse(str));
 
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
+
 app.use(hpp());
 
-mountRoute(app);
+// =======================
+// Start Server
+// =======================
 
-app.use((req, res, next) => {
-  const err = new Error(`Not found: ${req.originalUrl}`);
-  err.status = 404;
-  next(err);
-});
+const startServer = async () => {
+  try {
+    // Connect database first
 
-const port = process.env.PORT;
+    await dbConnection();
 
-app.listen(port, () => {
-  console.log(`we are live on ${port}`);
-});
+    console.log("Mongo state:", mongoose.connection.readyState);
+
+    console.log("Database:", mongoose.connection.name);
+
+    // Import models/routes after connection
+
+    const { default: Product } = await import("./model/productModel.js");
+
+    const { default: mountRoute } = await import("./routes/mountRouter.js");
+
+    // =======================
+    // Routes
+    // =======================
+
+    mountRoute(app);
+
+    // Test Product API
+
+    app.get("/test-products", async (req, res) => {
+      try {
+        const products = await Product.find()
+          .populate("category")
+          .populate("brand");
+
+        res.status(200).json({
+          success: true,
+
+          result: products.length,
+
+          data: products,
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+
+          error: error.message,
+        });
+      }
+    });
+
+    // =======================
+    // 404 Handler
+    // =======================
+
+    app.use((req, res, next) => {
+
+      console.log(`404 Not found: ${req.originalUrl}`)
+      const err = new Error(`Not found: ${req.originalUrl}`);
+
+      err.status = 404;
+
+      next(err);
+    });
+
+    // =======================
+    // Error Handler
+    // =======================
+
+    app.use((err, req, res, next) => {
+      res.status(err.status || 500).json({
+        success: false,
+
+        message: err.message || "Server Error",
+      });
+    });
+
+    const port = process.env.PORT || 8000;
+
+    app.listen(port, () => {
+      console.log(`🚀 Server running on port ${port}`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to start server:", error.message);
+    process.exit(1);
+  }
+};
+
+// Run server
+
+startServer();
