@@ -11,12 +11,11 @@ dotenv.config({
   path: "./config.env",
 });
 
-
-
 const app = express();
 const allowedOrigins = [
   "http://localhost:5174",
   "https://rock-six-gilt.vercel.app",
+  "https://rock-60uenkr7f-zayan25.vercel.app",
 ];
 
 app.use(
@@ -75,8 +74,6 @@ const startServer = async () => {
     mountRoute(app);
 
     // Test Product API
-
-  
 
     // =======================
     // 404 Handler
