@@ -15,6 +15,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5174",
   "https://rock-4cldw66xf-zayan25.vercel.app",
+  "https://rock-zayan25.vercel.app/",
   "https://rock-six-gilt.vercel.app",
   "https://rock-60uenkr7f-zayan25.vercel.app",
 ];
