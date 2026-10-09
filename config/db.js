@@ -2,19 +2,17 @@ import mongoose from "mongoose";
 
 const dbConnection = async () => {
   try {
-
-
-    await mongoose.connect(process.env.DB_URL, {
+    const conn = await mongoose.connect(process.env.DB_URL, {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
     });
-    console.log("✅ Database connection successful\n");
 
-
+    console.log("✅ Database connection successful");
+    console.log("📦 Connected database:", conn.connection.name);
+    console.log("🌐 Connected host:", conn.connection.host);
   } catch (error) {
-    console.log("❌ Database connection failed:", error.message)
-  
-    throw error; // Re-throw to let server know connection failed
+    console.log("❌ Database connection failed:", error.message);
+    throw error;
   }
 };
 

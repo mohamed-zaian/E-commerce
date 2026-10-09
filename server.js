@@ -3,6 +3,7 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import qs from "qs";
 import hpp from "hpp";
+import cors from "cors";
 
 import dbConnection from "./config/db.js";
 
@@ -10,11 +11,20 @@ dotenv.config({
   path: "./config.env",
 });
 
-console.log("Environment:", process.env.NODE_ENV);
-console.log("DB_URL exists:", !!process.env.DB_URL);
-console.log("DB_URL type:", typeof process.env.DB_URL);
+
 
 const app = express();
+const allowedOrigins = [
+  "http://localhost:5174",
+  "https://rock-six-gilt.vercel.app",
+];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  }),
+);
 
 // =======================
 // Middlewares
