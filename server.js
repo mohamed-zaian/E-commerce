@@ -12,7 +12,11 @@ dotenv.config({
 });
 
 const app = express();
-const allowedOrigins = ["rock-zayan25.vercel.app"];
+const allowedOrigins = [
+  "https://rock-zayan25.vercel.app/",
+  "https://rock-60uenkr7f-zayan25.vercel.app",
+  "https://rock-zayan25.vercel.app",
+];
 
 app.use(
   cors({
