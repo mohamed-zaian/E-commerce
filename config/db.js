@@ -7,11 +7,7 @@ const dbConnection = async () => {
       socketTimeoutMS: 45000,
     });
 
-    console.log("✅ Database connection successful");
-    console.log("📦 Connected database:", conn.connection.name);
-    console.log("🌐 Connected host:", conn.connection.host);
   } catch (error) {
-    console.log("❌ Database connection failed:", error.message);
     throw error;
   }
 };
