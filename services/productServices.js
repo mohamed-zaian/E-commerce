@@ -2,6 +2,8 @@ import upload from "../middleware/uploadImageMiddleware.js";
 import Product from "../model/productModel.js";
 import FactoryHandler from "./factoryhandler.js";
 import asyncHandler from "express-async-handler";
+import redisClient from "../config/redis.js";
+
 
 // =========================
 // Image Upload
@@ -68,8 +70,6 @@ export const createProduct = asyncHandler(async (req, res, next) => {
 // =========================
 // Get products with filters
 export const getlistProducts = asyncHandler(async (req, res) => {
-  const filter = {};
-
   const {
     category,
     keyword,
@@ -85,8 +85,65 @@ export const getlistProducts = asyncHandler(async (req, res) => {
   } = req.query;
 
   // ===============================
-  // Search
+  // Pagination
   // ===============================
+
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+
+  const skip = (page - 1) * limit;
+
+  // ===============================
+  // Redis Cache Key
+  // ===============================
+
+  const cacheParams = {
+    category: category || "",
+    keyword: keyword || "",
+    subCategory: subCategory || "",
+    size: size || "",
+    color: color || "",
+    onSale: onSale || "",
+    isNewArrival: isNewArrival || "",
+    isBestSeller: isBestSeller || "",
+    isTrending: isTrending || "",
+    featured: featured || "",
+    inStock: inStock || "",
+    page,
+    limit,
+  };
+
+  const cacheKey = `products:list:${JSON.stringify(cacheParams)}`;
+
+  // ===============================
+  // Check Redis Cache
+  // ===============================
+
+  try {
+    const cachedData = await redisClient.get(cacheKey);
+
+    if (cachedData) {
+      try {
+        const parsedData = JSON.parse(cachedData);
+
+        console.log(`[Redis][HIT] ${cacheKey}`);
+
+        return res.status(200).json(parsedData);
+      } catch (error) {
+        console.error("[Redis] Invalid cached product data:", error.message);
+      }
+    }
+
+    console.log(`[Redis][MISS] ${cacheKey}`);
+  } catch (error) {
+    console.error("[Redis][READ ERROR]", error.message);
+  }
+
+  // ===============================
+  // Build MongoDB Filter
+  // ===============================
+
+  const filter = {};
 
   if (keyword) {
     filter.$or = [
@@ -105,53 +162,28 @@ export const getlistProducts = asyncHandler(async (req, res) => {
     ];
   }
 
-  // ===============================
-  // Category
-  // ===============================
-
   if (category) {
     filter.category = category;
   }
-
-  // ===============================
-  // SubCategory
-  // ===============================
 
   if (subCategory) {
     filter.subCategory = subCategory;
   }
 
-  // ===============================
-  // Size + Stock
-  // ===============================
-
   if (size || inStock === "true") {
     filter.sizes = {
       $elemMatch: {
-        ...(size && {
-          size,
-        }),
-
+        ...(size && { size }),
         ...(inStock === "true" && {
-          quantity: {
-            $gt: 0,
-          },
+          quantity: { $gt: 0 },
         }),
       },
     };
   }
 
-  // ===============================
-  // Color
-  // ===============================
-
   if (color) {
     filter.colors = color;
   }
-
-  // ===============================
-  // Boolean filters
-  // ===============================
 
   if (onSale === "true") {
     filter.onSale = true;
@@ -174,17 +206,7 @@ export const getlistProducts = asyncHandler(async (req, res) => {
   }
 
   // ===============================
-  // Pagination
-  // ===============================
-
-  const page = Math.max(Number(req.query.page) || 1, 1);
-
-  const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
-
-  const skip = (page - 1) * limit;
-
-  // ===============================
-  // Get total + products
+  // Get Products from MongoDB
   // ===============================
 
   const [totalProducts, products] = await Promise.all([
@@ -201,23 +223,36 @@ export const getlistProducts = asyncHandler(async (req, res) => {
   ]);
 
   // ===============================
-  // Response
+  // Build Response
   // ===============================
 
-  res.status(200).json({
+  const responseData = {
     result: products.length,
-
     totalProducts,
-
     currentPage: page,
-
     totalPages: Math.ceil(totalProducts / limit),
-
     limit,
-
     data: products,
-  });
-});
+  };
+
+  // ===============================
+  // Save Response in Redis
+  // ===============================
+
+  try {
+    await redisClient.setEx(cacheKey, 60, JSON.stringify(responseData));
+
+    console.log(`[Redis][SET] ${cacheKey} (TTL: 60s)`);
+  } catch (error) {
+    console.error("[Redis][WRITE ERROR]", error.message);
+  }
+
+  // ===============================
+  // Send Response
+  // ===============================
+
+  return res.status(200).json(responseData);
+}); 
 
 export const getProduct = factoryHandler.getOne([
   {
