@@ -2,41 +2,73 @@ import asyncHandler from "express-async-handler";
 import Product from "../model/productModel.js";
 import Cart from "../model/cartModel.js";
 import Coupon from "../model/couponModel.js";
+import redisClient, { redisReady } from "../config/redis.js";
 
 /* ===================== HELPERS ===================== */
 
-export const calcTotalCartPrice = (cart) => {
-
-  return (cart.cartItems || []).reduce(
+export const calcTotalCartPrice = (cart) => (cart.cartItems || []).reduce(
     (total, item) => total + item.price * item.quantity,
 
     0,
   );
-};
 
 /* ===================== GET CART ===================== */
+
 export const getCart = asyncHandler(async (req, res) => {
+  const userId = req.user._id.toString();
+  const cacheKey = `cart:${userId}:details`;
+  const TTL = 60;
 
+  // 1. Try Redis cache
+  try {
+    await redisReady;
 
-const cart = await Cart.findOne({
-  user: req.user._id,
-});
+    if (redisClient.isReady) {
+      const cachedData = await redisClient.get(cacheKey);
 
+      if (cachedData !== null) {
+        console.log(`[Redis][HIT] ${cacheKey}`);
+        return res.status(200).json(JSON.parse(cachedData));
+      }
+    }
+  } catch (error) {
+    console.error("[Redis] Cache read failed:", error.message);
+  }
 
+  console.log(`[Redis][MISS] ${cacheKey}`);
 
-await cart?.populate({
-  path: "cartItems.product",
-  model: "Product",
-});
+  // 2. Fetch cart from MongoDB
+  const cart = await Cart.findOne({
+    user: req.user._id,
+  });
 
-  res.status(200).json({
+  await cart?.populate({
+    path: "cartItems.product",
+    model: "Product",
+  });
+
+  const response = {
     length: cart?.cartItems?.length || 0,
-
     data: cart || {
       cartItems: [],
       totalCartPrice: 0,
     },
-  });
+  };
+
+  // 3. Cache response for 60 seconds
+  try {
+    if (redisClient.isReady) {
+      await redisClient.set(cacheKey, JSON.stringify(response), {
+        EX: TTL,
+      });
+
+      console.log(`[Redis][SET] ${cacheKey}`);
+    }
+  } catch (error) {
+    console.error("[Redis] Cache write failed:", error.message);
+  }
+
+  return res.status(200).json(response);
 });
 
 /* ===================== ADD TO CART ===================== */
@@ -44,15 +76,9 @@ await cart?.populate({
 export const addProductToCart = asyncHandler(async (req, res) => {
   const { productId, size, quantity = 1 } = req.body;
 
-
-
-
-let cart = (
-  await Cart.findOne({
+  let cart = await Cart.findOne({
     user: req.user._id,
-  })
-);
-
+  });
 
   const product = await Product.findById(productId);
   if (!product) {
@@ -77,10 +103,7 @@ let cart = (
     });
   }
 
-
-
   if (!cart) {
-
     cart = await Cart.create({
       user: req.user._id,
       totalCartPrice: 0,
@@ -89,11 +112,11 @@ let cart = (
     });
   }
 
-const existingItem = cart.cartItems.find(
-  (item) =>
-    item.product.toString() === productId &&
-    item.size?.toUpperCase() === size?.toUpperCase(),
-);
+  const existingItem = cart.cartItems.find(
+    (item) =>
+      item.product.toString() === productId &&
+      item.size?.toUpperCase() === size?.toUpperCase(),
+  );
   if (existingItem) {
     if (existingItem.quantity + quantity > selectedSize.quantity) {
       return res.status(400).json({
@@ -147,7 +170,6 @@ export const removeProductFromCart = asyncHandler(async (req, res) => {
       item.size.toUpperCase() === size.toUpperCase(),
   );
 
-
   if (!item) {
     return res.status(404).json({
       message: "Product not found in cart",
@@ -186,14 +208,11 @@ export const updateProductQuantityInCart = asyncHandler(async (req, res) => {
   }
 
   // Find item by productId + size
-const item = cart.cartItems.find(
-  (cartItem) =>
-    String(cartItem.product).trim() === String(productId).trim() &&
-    cartItem.size.trim().toUpperCase() === size.trim().toUpperCase()
-);
-
-
-
+  const item = cart.cartItems.find(
+    (cartItem) =>
+      String(cartItem.product).trim() === String(productId).trim() &&
+      cartItem.size.trim().toUpperCase() === size.trim().toUpperCase(),
+  );
 
   if (!item) {
     return res.status(404).json({
@@ -296,7 +315,30 @@ export const applyCoupon = asyncHandler(async (req, res) => {
 
 export const getCartItem = asyncHandler(async (req, res) => {
   const { itemId } = req.params;
+  const userId = req.user._id.toString();
 
+  const cacheKey = `cart:${userId}:item:${itemId}`;
+  const TTL = 60;
+
+  // 1. Try Redis cache
+  try {
+    await redisReady;
+
+    if (redisClient.isReady) {
+      const cachedData = await redisClient.get(cacheKey);
+
+      if (cachedData !== null) {
+        console.log(`[Redis][HIT] ${cacheKey}`);
+        return res.status(200).json(JSON.parse(cachedData));
+      }
+    }
+  } catch (error) {
+    console.error("[Redis] Cache read failed:", error.message);
+  }
+
+  console.log(`[Redis][MISS] ${cacheKey}`);
+
+  // 2. Fetch cart from MongoDB
   const cart = await Cart.findOne({
     user: req.user._id,
   }).populate(
@@ -318,7 +360,22 @@ export const getCartItem = asyncHandler(async (req, res) => {
     });
   }
 
-  res.status(200).json({
+  const response = {
     data: item,
-  });
+  };
+
+  // 3. Cache response for 60 seconds
+  try {
+    if (redisClient.isReady) {
+      await redisClient.set(cacheKey, JSON.stringify(response), {
+        EX: TTL,
+      });
+
+      console.log(`[Redis][SET] ${cacheKey}`);
+    }
+  } catch (error) {
+    console.error("[Redis] Cache write failed:", error.message);
+  }
+
+  return res.status(200).json(response);
 });

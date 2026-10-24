@@ -2,29 +2,47 @@ import asyncHandler from "express-async-handler";
 import Product from "../model/productModel.js";
 import User from "../model/userModel.js";
 import Order from "../model/orderModel.js";
+import redisClient, { redisReady } from "../config/redis.js";
 
 export const getDashboardStats = asyncHandler(async (req, res) => {
+  const cacheKey = "admin:dashboard:stats";
+
+  // 1. Try Redis cache
+  try {
+    await redisReady;
+
+    if (redisClient.isReady) {
+      const cachedStats = await redisClient.get(cacheKey);
+
+      if (cachedStats !== null) {
+        console.log(`[Redis][HIT] ${cacheKey}`);
+
+        return res.status(200).json(JSON.parse(cachedStats));
+      }
+
+      console.log(`[Redis][MISS] ${cacheKey}`);
+    }
+  } catch (error) {
+    console.error("[Redis] Cache read failed:", error.message);
+  }
+
+  // 2. Fetch fresh statistics from MongoDB
   const [totalProducts, totalUsers, totalOrders, buyers, revenueResult] =
     await Promise.all([
-      // Total products
       Product.countDocuments(),
 
-      // Registered customers
       User.countDocuments({
         role: "user",
       }),
 
-      // Orders excluding cancelled
       Order.countDocuments({
         status: {
           $ne: "cancelled",
         },
       }),
 
-      // Customers who placed orders
       Order.distinct("user"),
 
-      // Revenue
       Order.aggregate([
         {
           $match: {
@@ -33,11 +51,9 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
             },
           },
         },
-
         {
           $group: {
             _id: null,
-
             totalRevenue: {
               $sum: "$totalOrderPrice",
             },
@@ -53,93 +69,127 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   const conversionRate =
     totalUsers > 0 ? ((buyers.length / totalUsers) * 100).toFixed(1) : 0;
 
-  res.status(200).json({
+  const response = {
     totalRevenue,
-
     totalOrders,
-
     totalCustomers: totalUsers,
-
     totalProducts,
-
     averageOrderValue: Number(averageOrderValue.toFixed(2)),
-
     conversionRate: Number(conversionRate),
-  });
+  };
+
+  // 3. Cache result for 60 seconds
+  try {
+    if (redisClient.isReady) {
+      await redisClient.set(cacheKey, JSON.stringify(response), {
+        EX: 60,
+      });
+
+      console.log(`[Redis][SET] ${cacheKey}`);
+    }
+  } catch (error) {
+    console.error("[Redis] Cache write failed:", error.message);
+  }
+
+  return res.status(200).json(response);
 });
 
 export const getBestSellers = asyncHandler(async (req, res) => {
-  const limit = Number(req.query.limit) || 10;
+  const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+  const cacheKey = `products:best-sellers:${limit}`;
 
+  // 1. Try to get data from Redis
+  try {
+    await redisReady;
+
+    if (redisClient.isReady) {
+      const cachedData = await redisClient.get(cacheKey);
+
+      if (cachedData !== null) {
+        console.log(`[Redis][HIT] ${cacheKey}`);
+        return res.status(200).json(JSON.parse(cachedData));
+      }
+    }
+  } catch (error) {
+    console.error("[Redis] Cache read failed:", error.message);
+  }
+
+  console.log(`[Redis][MISS] ${cacheKey}`);
+
+  // 2. Fetch data from MongoDB
   const bestSellers = await Product.find({
     isBestSeller: true,
   })
-    .sort({
-      sold: -1,
-    })
+    .sort({ sold: -1 })
     .limit(limit);
 
-  res.status(200).json({
+  const response = {
     result: bestSellers.length,
-
     data: bestSellers,
-  });
+  };
+
+  // 3. Save the result in Redis for 60 seconds
+  try {
+    if (redisClient.isReady) {
+      await redisClient.set(cacheKey, JSON.stringify(response), {
+        EX: 60,
+      });
+
+      console.log(`[Redis][SET] ${cacheKey}`);
+    }
+  } catch (error) {
+    console.error("[Redis] Cache write failed:", error.message);
+  }
+
+  return res.status(200).json(response);
 });
 
+
 export const getAnalytics = asyncHandler(async (req, res) => {
-  // ==========================
-  // Last 12 Months Range
-  // ==========================
+  const cacheKey = "admin:analytics";
+  const TTL = 60;
 
+  // 1. Try Redis cache
+  try {
+    await redisReady;
+
+    if (redisClient.isReady) {
+      const cachedData = await redisClient.get(cacheKey);
+
+      if (cachedData !== null) {
+        console.log(`[Redis][HIT] ${cacheKey}`);
+        return res.status(200).json(JSON.parse(cachedData));
+      }
+    }
+  } catch (error) {
+    console.error("[Redis] Cache read failed:", error.message);
+  }
+
+  console.log(`[Redis][MISS] ${cacheKey}`);
+
+  // 2. Calculate analytics from MongoDB
   const now = new Date();
-
   const startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-
-  // ==========================
-  // Run Analytics Queries Together
-  // ==========================
 
   const [monthlyRevenue, salesByCategory, ordersByStatus, recentOrders] =
     await Promise.all([
-      // ==========================
-      // Monthly Revenue
-      // ==========================
-
       Order.aggregate([
         {
           $match: {
-            status: {
-              $ne: "cancelled",
-            },
-
-            createdAt: {
-              $gte: startDate,
-            },
+            status: { $ne: "cancelled" },
+            createdAt: { $gte: startDate },
           },
         },
-
         {
           $group: {
             _id: {
-              year: {
-                $year: "$createdAt",
-              },
-
-              month: {
-                $month: "$createdAt",
-              },
+              year: { $year: "$createdAt" },
+              month: { $month: "$createdAt" },
             },
-
-            revenue: {
-              $sum: "$totalOrderPrice",
-            },
-
-            orders: {
-              $sum: 1,
-            },
+            revenue: { $sum: "$totalOrderPrice" },
+            orders: { $sum: 1 },
           },
         },
-
         {
           $sort: {
             "_id.year": 1,
@@ -148,59 +198,30 @@ export const getAnalytics = asyncHandler(async (req, res) => {
         },
       ]),
 
-      // ==========================
-      // Sales By Category
-      // ==========================
-
       Order.aggregate([
-        {
-          $match: {
-            status: {
-              $ne: "cancelled",
-            },
-          },
-        },
-
-        {
-          $unwind: "$cartItems",
-        },
-
+        { $match: { status: { $ne: "cancelled" } } },
+        { $unwind: "$cartItems" },
         {
           $lookup: {
             from: "products",
-
             localField: "cartItems.product",
-
             foreignField: "_id",
-
             as: "product",
           },
         },
-
-        {
-          $unwind: "$product",
-        },
-
+        { $unwind: "$product" },
         {
           $lookup: {
             from: "categories",
-
             localField: "product.category",
-
             foreignField: "_id",
-
             as: "category",
           },
         },
-
-        {
-          $unwind: "$category",
-        },
-
+        { $unwind: "$category" },
         {
           $group: {
             _id: "$category.name",
-
             sales: {
               $sum: {
                 $multiply: ["$cartItems.price", "$cartItems.quantity"],
@@ -208,55 +229,26 @@ export const getAnalytics = asyncHandler(async (req, res) => {
             },
           },
         },
-
-        {
-          $sort: {
-            sales: -1,
-          },
-        },
+        { $sort: { sales: -1 } },
       ]),
-
-      // ==========================
-      // Orders Status
-      // ==========================
 
       Order.aggregate([
         {
           $group: {
             _id: "$status",
-
-            count: {
-              $sum: 1,
-            },
+            count: { $sum: 1 },
           },
         },
-
-        {
-          $sort: {
-            count: -1,
-          },
-        },
+        { $sort: { count: -1 } },
       ]),
 
-      // ==========================
-      // Recent Activity
-      // ==========================
-
       Order.find()
-
-        .sort({
-          createdAt: -1,
-        })
-
+        .sort({ createdAt: -1 })
         .limit(10)
-
         .select("orderNumber status totalOrderPrice createdAt"),
     ]);
 
-  // ==========================
-  // Format Monthly Data
-  // ==========================
-
+  // 3. Format monthly revenue
   const monthNames = [
     "Jan",
     "Feb",
@@ -264,7 +256,6 @@ export const getAnalytics = asyncHandler(async (req, res) => {
     "Apr",
     "May",
     "Jun",
-
     "Jul",
     "Aug",
     "Sep",
@@ -280,11 +271,8 @@ export const getAnalytics = asyncHandler(async (req, res) => {
 
     monthlyMap[key] = {
       month: monthNames[item._id.month - 1],
-
       year: item._id.year,
-
       revenue: item.revenue,
-
       orders: item.orders,
     };
   });
@@ -292,114 +280,116 @@ export const getAnalytics = asyncHandler(async (req, res) => {
   const monthlyRevenueFormatted = [];
 
   for (let i = 11; i >= 0; i--) {
-    const date = new Date(
-      now.getFullYear(),
-
-      now.getMonth() - i,
-
-      1,
-    );
-
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
 
     monthlyRevenueFormatted.push(
       monthlyMap[key] || {
         month: monthNames[date.getMonth()],
-
         year: date.getFullYear(),
-
         revenue: 0,
-
         orders: 0,
       },
     );
   }
 
-  // ==========================
-  // Recent Activity Format
-  // ==========================
-
+  // 4. Format recent activity
   const recentActivity = recentOrders.map((order) => ({
     id: order._id,
-
     type: "order",
-
     message: `Order ${order.orderNumber} is ${order.status}`,
-
     amount: order.totalOrderPrice,
-
     time: getTimeAgo(order.createdAt),
-
     orderId: order.orderNumber,
   }));
 
-  // ==========================
-  // Response
-  // ==========================
-
-  res.status(200).json({
+  // 5. Build response
+  const response = {
     monthlyRevenue: monthlyRevenueFormatted,
-
     salesByCategory,
-
     ordersByStatus,
-
     recentActivity,
-  });
+  };
+
+  // 6. Save response to Redis
+  try {
+    if (redisClient.isReady) {
+      await redisClient.set(cacheKey, JSON.stringify(response), {
+        EX: TTL,
+      });
+
+      console.log(`[Redis][SET] ${cacheKey}`);
+    }
+  } catch (error) {
+    console.error("[Redis] Cache write failed:", error.message);
+  }
+
+  return res.status(200).json(response);
 });
+
+
 export const getAllCustomers = asyncHandler(async (req, res) => {
-  const page = Number(req.query.page) || 1;
-
-  const limit = Number(req.query.limit) || 10;
-
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
   const skip = (page - 1) * limit;
 
+  const cacheKey = `admin:customers:page:${page}:limit:${limit}`;
+  const TTL = 60;
+
+  // 1. Try Redis cache
+  try {
+    await redisReady;
+
+    if (redisClient.isReady) {
+      const cachedData = await redisClient.get(cacheKey);
+
+      if (cachedData !== null) {
+        console.log(`[Redis][HIT] ${cacheKey}`);
+        return res.status(200).json(JSON.parse(cachedData));
+      }
+    }
+  } catch (error) {
+    console.error("[Redis] Cache read failed:", error.message);
+  }
+
+  console.log(`[Redis][MISS] ${cacheKey}`);
+
+  // 2. Fetch customers from MongoDB
   const customers = await User.aggregate([
     {
       $match: {
         role: "user",
       },
     },
-
     {
       $lookup: {
         from: "orders",
-
         let: {
           customerId: "$_id",
         },
-
         pipeline: [
           {
             $match: {
               $expr: {
                 $eq: ["$user", "$$customerId"],
               },
-
               status: {
                 $ne: "cancelled",
               },
             },
           },
-
           {
             $project: {
               orderNumber: 1,
-
               totalOrderPrice: 1,
-
               status: 1,
-
               createdAt: 1,
             },
           },
         ],
-
         as: "orders",
       },
     },
-
-    // only customers who ordered
     {
       $match: {
         "orders.0": {
@@ -407,19 +397,16 @@ export const getAllCustomers = asyncHandler(async (req, res) => {
         },
       },
     },
-
     {
       $addFields: {
         totalOrders: {
           $size: "$orders",
         },
-
         totalSpent: {
           $sum: "$orders.totalOrderPrice",
         },
       },
     },
-
     {
       $addFields: {
         averageOrderValue: {
@@ -427,55 +414,38 @@ export const getAllCustomers = asyncHandler(async (req, res) => {
             {
               $gt: ["$totalOrders", 0],
             },
-
             {
               $divide: ["$totalSpent", "$totalOrders"],
             },
-
             0,
           ],
         },
       },
     },
-
     {
       $project: {
         firstName: 1,
-
         lastName: 1,
-
         email: 1,
-
         phone: 1,
-
         imageProfile: 1,
-
         createdAt: 1,
-
         updatedAt: 1,
-
         addresses: 1,
-
         totalOrders: 1,
-
         totalSpent: 1,
-
         averageOrderValue: 1,
-
         orders: 1,
       },
     },
-
     {
       $sort: {
         createdAt: -1,
       },
     },
-
     {
       $skip: skip,
     },
-
     {
       $limit: limit,
     },
@@ -487,19 +457,14 @@ export const getAllCustomers = asyncHandler(async (req, res) => {
         role: "user",
       },
     },
-
     {
       $lookup: {
         from: "orders",
-
         localField: "_id",
-
         foreignField: "user",
-
         as: "orders",
       },
     },
-
     {
       $match: {
         "orders.0": {
@@ -507,7 +472,6 @@ export const getAllCustomers = asyncHandler(async (req, res) => {
         },
       },
     },
-
     {
       $count: "total",
     },
@@ -515,20 +479,31 @@ export const getAllCustomers = asyncHandler(async (req, res) => {
 
   const total = totalCustomers[0]?.total || 0;
 
-  res.status(200).json({
+  const response = {
     result: customers.length,
-
     total,
-
     page,
-
     totalPages: Math.ceil(total / limit),
-
     limit,
-
     data: customers,
-  });
+  };
+
+  // 3. Cache response for 60 seconds
+  try {
+    if (redisClient.isReady) {
+      await redisClient.set(cacheKey, JSON.stringify(response), {
+        EX: TTL,
+      });
+
+      console.log(`[Redis][SET] ${cacheKey}`);
+    }
+  } catch (error) {
+    console.error("[Redis] Cache write failed:", error.message);
+  }
+
+  return res.status(200).json(response);
 });
+
 // Helper function to get time ago
 function getTimeAgo(date) {
   const seconds = Math.floor((new Date() - date) / 1000);
@@ -566,7 +541,6 @@ export const getAllOrdersForAdmin = asyncHandler(async (req, res) => {
   if (paymentMethodType && paymentMethodType !== "all") {
     filter.paymentMethodType = paymentMethodType;
   }
-
 
   const [orders, total] = await Promise.all([
     Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),

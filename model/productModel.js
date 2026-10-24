@@ -157,7 +157,7 @@ productSchema.virtual("reviews", {
   localField: "_id",
 });
 
-productSchema.path("sizes").validate(function (sizes) {
+productSchema.path("sizes").validate((sizes) => {
   const values = sizes.map((item) => item.size);
 
   return values.length === new Set(values).size;

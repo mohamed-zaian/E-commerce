@@ -4,13 +4,14 @@ import FactoryHandler from "./factoryhandler.js";
 import User from "../model/userModel.js";
 import upload from "../middleware/uploadImageMiddleware.js";
 import { setToken } from "./authService.js";
+import { invalidateUserCache } from "../utils/cacheInvalidation.js";
 
 const factory = new FactoryHandler(User);
 
 export const uploadImage = upload("users").single("imageProfile");
 
 export const setImagetoBody = (req, res, next) => {
-  if (req.file.path) {
+  if (req.file?.path) {
     req.body.imageProfile = req.file.path;
   }
 
@@ -19,7 +20,6 @@ export const setImagetoBody = (req, res, next) => {
 
 export const createUser = factory.createOne;
 export const getUser = factory.getOne;
-
 export const getAllUser = factory.getAll;
 
 export const updateUser = asyncHandler(async (req, res) => {
@@ -27,7 +27,6 @@ export const updateUser = asyncHandler(async (req, res) => {
 
   const item = await User.findByIdAndUpdate(
     id,
-    // eslint-disable-next-line node/no-unsupported-features/es-syntax
     {
       name: req.body.name,
       email: req.body.email,
@@ -44,12 +43,16 @@ export const updateUser = asyncHandler(async (req, res) => {
     });
   }
 
-  res.status(200).json({ data: item });
+  await invalidateUserCache(id);
+
+  return res.status(200).json({ data: item });
 });
 
 export const changePassword = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
   const item = await User.findByIdAndUpdate(
-    req.use._id,
+    userId,
     {
       password: await bcrypt.hash(req.body.password, 10),
       changePasswordAt: Date.now(),
@@ -59,11 +62,13 @@ export const changePassword = asyncHandler(async (req, res) => {
 
   if (!item) {
     return res.status(404).json({
-      error: `This User with id ${id} was not found`,
+      error: "User not found",
     });
   }
 
-  res.status(200).json({ data: item });
+  await invalidateUserCache(userId.toString());
+
+  return res.status(200).json({ data: item });
 });
 
 export const deleteUSer = factory.deleteOne;
@@ -73,10 +78,11 @@ export const getLoggedUserData = asyncHandler(async (req, res, next) => {
   next();
 });
 
-export const updateLoggedUserData = asyncHandler(async (req, res, next) => {
+export const updateLoggedUserData = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
   const item = await User.findByIdAndUpdate(
-    req.user._id,
-    // eslint-disable-next-line node/no-unsupported-features/es-syntax
+    userId,
     {
       firstName: req.body.firstName,
       lastName: req.body.lastName,
@@ -86,13 +92,27 @@ export const updateLoggedUserData = asyncHandler(async (req, res, next) => {
     { new: true, runValidators: true },
   );
 
+  if (!item) {
+    return res.status(404).json({
+      error: "User not found",
+    });
+  }
+
+  await invalidateUserCache(userId.toString());
+
   const token = setToken(item._id);
-  res.status(200).json({ data: item, token });
+
+  return res.status(200).json({
+    data: item,
+    token,
+  });
 });
 
-export const changeMyPassword = asyncHandler(async (req, res, next) => {
+export const changeMyPassword = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
   const item = await User.findByIdAndUpdate(
-    req.user._id,
+    userId,
     {
       password: await bcrypt.hash(req.body.password, 10),
       changePasswordAt: Date.now(),
@@ -100,7 +120,18 @@ export const changeMyPassword = asyncHandler(async (req, res, next) => {
     { new: true, runValidators: true },
   );
 
+  if (!item) {
+    return res.status(404).json({
+      error: "User not found",
+    });
+  }
+
+  await invalidateUserCache(userId.toString());
+
   const token = setToken(item._id);
 
-  res.status(200).json({ data: item, token });
+  return res.status(200).json({
+    data: item,
+    token,
+  });
 });

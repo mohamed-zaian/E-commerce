@@ -1,9 +1,8 @@
+import asyncHandler from "express-async-handler";
 import upload from "../middleware/uploadImageMiddleware.js";
 import Product from "../model/productModel.js";
 import FactoryHandler from "./factoryhandler.js";
-import asyncHandler from "express-async-handler";
 import redisClient from "../config/redis.js";
-
 
 // =========================
 // Image Upload
@@ -126,17 +125,15 @@ export const getlistProducts = asyncHandler(async (req, res) => {
       try {
         const parsedData = JSON.parse(cachedData);
 
-        console.log(`[Redis][HIT] ${cacheKey}`);
 
         return res.status(200).json(parsedData);
       } catch (error) {
-        console.error("[Redis] Invalid cached product data:", error.message);
+        throw new Error("Failed to parse cached data");
       }
     }
 
-    console.log(`[Redis][MISS] ${cacheKey}`);
   } catch (error) {
-    console.error("[Redis][READ ERROR]", error.message);
+    throw new Error("Failed to read from Redis");
   }
 
   // ===============================
@@ -242,9 +239,8 @@ export const getlistProducts = asyncHandler(async (req, res) => {
   try {
     await redisClient.setEx(cacheKey, 60, JSON.stringify(responseData));
 
-    console.log(`[Redis][SET] ${cacheKey} (TTL: 60s)`);
   } catch (error) {
-    console.error("[Redis][WRITE ERROR]", error.message);
+    throw new Error("Failed to write to Redis");
   }
 
   // ===============================
@@ -252,7 +248,7 @@ export const getlistProducts = asyncHandler(async (req, res) => {
   // ===============================
 
   return res.status(200).json(responseData);
-}); 
+});
 
 export const getProduct = factoryHandler.getOne([
   {
@@ -297,7 +293,7 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   const product = await Product.findById(id);
 
   if (!product) {
-    return next(new ApiError(`No product found for this id ${id}`, 404));
+    return next(new Error(`No product found for this id ${id}`, 404));
   }
 
   // =====================================================
@@ -370,7 +366,6 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     }
   }
 
-
   // =====================================================
   // UPDATE
   // =====================================================
@@ -383,8 +378,6 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   if (!updatedProduct) {
     return next(new ApiError(`No product found for this id ${id}`, 404));
   }
-
-
 
   res.status(200).json({
     success: true,

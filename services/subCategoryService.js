@@ -12,7 +12,7 @@ export const setID = (req, res, next) => {
   next();
 };
 export const getListOfSubCategories = async (req, res) => {
-  let filter = {};
+  const filter = {};
 
   if (req.params.categoryId) {
     filter.category = req.params.categoryId;
