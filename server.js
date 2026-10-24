@@ -13,9 +13,8 @@ dotenv.config({
 
 const app = express();
 const allowedOrigins = [
-  "https://rock-zayan25.vercel.app/",
-  "https://rock-60uenkr7f-zayan25.vercel.app",
   "https://rock-zayan25.vercel.app",
+  "https://rock-six-gilt.vercel.app/",
   "https://rock-qnpxldlqc-zayan25.vercel.app/",
 ];
 
