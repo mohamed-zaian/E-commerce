@@ -63,7 +63,6 @@ const startServer = async () => {
 
     // Import models/routes after connection
 
-    const { default: Product } = await import("./model/productModel.js");
 
     const { default: mountRoute } = await import("./routes/mountRouter.js");
 
