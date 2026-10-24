@@ -1,21 +1,23 @@
 
+import dotenv from "dotenv";
 import { createClient } from "redis";
 
-const redisUrl = process.env.REDIS_URL;
+dotenv.config({ path: "./config.env" });
 
-if (!redisUrl) {
-  throw new Error("REDIS_URL environment variable is required");
-}
+const redisUrl =
+  process.env.REDIS_URL || "redis://127.0.0.1:6379";
+
 
 const redisClient = createClient({
   url: redisUrl,
+  RESP: 2,
   socket: {
     connectTimeout: 10000,
-    reconnectStrategy: (retries) => {
-      return Math.min(retries * 500, 5000);
-    },
+    reconnectStrategy: (retries) =>
+      Math.min(retries * 500, 5000),
   },
 });
+
 
 redisClient.on("error", (error) => {
   console.error("Redis error:", error.message);
