@@ -16,6 +16,7 @@ const allowedOrigins = [
   "https://rock-zayan25.vercel.app/",
   "https://rock-60uenkr7f-zayan25.vercel.app",
   "https://rock-zayan25.vercel.app",
+  "https://rock-qnpxldlqc-zayan25.vercel.app/",
 ];
 
 app.use(
@@ -62,7 +63,6 @@ const startServer = async () => {
     await dbConnection();
 
     // Import models/routes after connection
-
 
     const { default: mountRoute } = await import("./routes/mountRouter.js");
 
